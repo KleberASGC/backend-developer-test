@@ -119,27 +119,7 @@ const editJob = async (req, res) => {
     return res.status(400).json({ error: 'no fields to update' });
   }
 
-  const values = [];
-  const fieldsToUpdate = [];
-    
-  if (title !== undefined) {
-    fieldsToUpdate.push('title = $1');
-    values.push(title);
-  }
-  if (location !== undefined) {
-    fieldsToUpdate.push('location = $2');
-    values.push(location);
-  }
-  if (description !== undefined) {
-    fieldsToUpdate.push('description = $3');
-    values.push(description);
-  }
-    
-  fieldsToUpdate.push('updated_at = now()');
-    
-  values.push(jobId);
-    
-  const result = await modelJob.updateJob(fieldsToUpdate, values);
+  const result = await modelJob.updateJob(jobId, title, location, description);
   
   if (result.rowCount > 0) {
     return res.status(200).json({

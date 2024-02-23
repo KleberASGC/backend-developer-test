@@ -27,10 +27,9 @@ const addJob = async (values) => {
 };
 
 const updateJob = async (jobId, title, location, description) => {
-
   const values = [];
   const fieldsToUpdate = [];
-      
+  
   if (title !== undefined) {
     fieldsToUpdate.push('title = $' + (values.length + 1));
     values.push(title);
@@ -43,13 +42,13 @@ const updateJob = async (jobId, title, location, description) => {
     fieldsToUpdate.push('description = $' + (values.length + 1));
     values.push(description);
   }
-      
   fieldsToUpdate.push('updated_at = now()');
-      
   values.push(jobId);
+
   let query = 'UPDATE jobs SET';
   query += ' ' + fieldsToUpdate.join(', ');
-  query += ' WHERE id = $' + (values.length + 1);
+  query += ' WHERE id = $' + (values.length);
+
   const result = await database.query({
     text: query,
     values
