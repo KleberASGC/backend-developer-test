@@ -1,10 +1,7 @@
 const uuidValidate = require('uuid-validate');
 const modelJob = require('../models/job');
 const modelCompanies = require('../models/companies');
-
-const AWS = require('aws-sdk');
-
-const s3 = new AWS.S3();
+const awsService = require('../services/awsService');
 
 const createJob = async (req, res) => {
   const bodyParams = [
@@ -16,7 +13,7 @@ const createJob = async (req, res) => {
     
   if (bodyParams.includes('') || bodyParams.includes(undefined)) {
     return res.status(400).json({
-      error: 'bad req, missing fields'
+      error: 'bad request, missing fields'
     });
   }
     
@@ -56,45 +53,42 @@ const createJob = async (req, res) => {
 
 const publishJob = async (req, res) => {
   const jobId = req.params.job_id;
-    
-  if(!uuidValidate(jobId)) {
+  if (!uuidValidate(jobId)) {
     return res.status(400).json({
       error: 'invalid job_id'
     });
   }
-    
-  const JOB_STATUS = 'draft';
-  const job = await modelJob.getJobById(jobId, JOB_STATUS);
-      
-  if (!job) {
+  const JOB_STATUS = 'published';
+  const result = await modelJob.setJobStatus(jobId, JOB_STATUS);
+  if (result.rowCount === 0) {
     return res.status(404).json({
       error: 'job not found'
     });
+  } else if (result.rowCount > 0) {
+    console.log('Job status updated to published in the database');
+  } else {
+    return res.status(500).json({
+      error: 'something went wrong when updating job status'
+    });
   }
+  
+  
+  const job = await modelJob.getJobById(jobId, JOB_STATUS);
+  const company = await modelCompanies.getCompanyById(job.company_id);
+  job.company_name = company.name;
     
-  const params = {
-    Bucket: 'jobs-published-plooraltest',
-    Key: `${jobId}.json`,
-    Body: JSON.stringify(job),
-    ContentType: 'application/json'
-  };
-      
-  // Faz o upload do objeto para o bucket
   try {
-    s3.putObject(params, (err, data) => {
-      if (err) {
-        console.error('Error uploading the object:', err);
-      } else {
-        console.log('Object successfully sent to Amazon S3:', data);
-      }
+    // Upload job to S3
+    await awsService.uploadJobToS3(jobId, job);
+    return res.status(200).json({
+      message: 'job published'
     });
   } catch (error) {
-    console.error('an error has occurred');
+    console.error('An error occurred while publishing job:', error);
+    return res.status(500).json({
+      error: 'something went wrong when publishing job'
+    });
   }
-    
-  return res.status(200).json({
-    message: 'success'
-  });
 };
 
 const editJob = async (req, res) => {
@@ -166,8 +160,38 @@ const deleteJob = async (req, res) => {
 };
 
 const archiveJob = async (req, res) => {
-  // TO DO
-  return res.status(500);
+  const jobId = req.params.job_id;
+  if (!uuidValidate(jobId)) {
+    return res.status(400).json({
+      error: 'invalid job_id'
+    });
+  }
+  const JOB_STATUS = 'archived';
+  const result = await modelJob.setJobStatus(jobId, JOB_STATUS);
+  if (result.rowCount === 0) {
+    return res.status(404).json({
+      error: 'job not found'
+    });
+  } else if (result.rowCount > 0) {
+    console.log('Job status updated to archived in the database');
+  } else {
+    return res.status(500).json({
+      error: 'something went wrong when updating job status'
+    });
+  }
+
+  const job = await modelJob.getJobById(jobId, JOB_STATUS);
+  try {
+    await awsService.uploadJobToS3(jobId, job);
+    return res.status(200).json({
+      message: 'job archived'
+    });
+  } catch (error) {
+    console.error('An error occurred while archiving job:', error);
+    return res.status(500).json({
+      error: 'something went wrong when archiving job'
+    });
+  }
 };
 
 module.exports = {

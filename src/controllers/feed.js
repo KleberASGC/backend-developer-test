@@ -1,35 +1,28 @@
-const AWS = require('aws-sdk');
-const s3 = new AWS.S3();
+const awsService = require('../services/awsService');
+const cache = {}; // Object to store cached results
 
 const getPublishedJobs = async (request, response) => {
   try {
-    const params = {
-      Bucket: 'jobs-published-plooraltest'
-    };
+    const cacheKey = 'published_jobs'; // Unique cache key for this route
     
-    const jobs = [];
-    
-    // Lista todos os objetos no bucket
-    const data = await s3.listObjectsV2(params).promise();
-    
-    for (const job of data.Contents) {
-      const jobParams = {
-        Bucket: params.Bucket,
-        Key: job.Key
-      };
-    
-      // Obtém o conteúdo do objeto JSON
-      const jobData = await s3.getObject(jobParams).promise();
-      const jobContent = JSON.parse(jobData.Body.toString('utf-8'));
-      jobs.push(jobContent);
+    // Check if data is in cache
+    if (cache[cacheKey]) {
+      console.log('Returning data from cache...');
+      return response.status(200).json({ jobs: cache[cacheKey] });
     }
     
-    return response.status(200).json({
-      message: 'published jobs',
-      jobs
-    });
+    const jobContent = await awsService.getPublishedJobsFromS3();
+    
+    // Store data in cache for a certain period of time (e.g., 5 minutes)
+    cache[cacheKey] = jobContent;
+    setTimeout(() => {
+      console.log('Removing data from cache...');
+      delete cache[cacheKey];
+    }, 5 * 60 * 1000); // 5 minutes in milliseconds
+    
+    return response.status(200).json({ jobs: jobContent });
   } catch (error) {
-    console.error('an error has occurred', error);
+    console.error('An error has occurred', error);
     return response.status(500).json({ error: 'Internal Server Error' });
   }
 };
