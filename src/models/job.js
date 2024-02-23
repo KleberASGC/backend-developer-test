@@ -65,9 +65,18 @@ const deleteJob = async (jobId) => {
   return result;
 };
 
+const setJobStatus = async (jobId, status) => {
+  const result = await database.query({
+    text: 'UPDATE jobs SET status = $1 WHERE id = $2',
+    values: [status, jobId]
+  });
+  return result;
+};
+
 module.exports = {
   getJobById,
   addJob,
   updateJob,
-  deleteJob
+  deleteJob,
+  setJobStatus
 };
