@@ -17,7 +17,7 @@ git clone -b klebercurvelo https://github.com/KleberASGC/backend-developer-test.
 Navigate to the directory where you cloned the repository and install the dependencies using npm:
 
 ```bash
-cd your-repository
+cd backend-developer-test
 npm install
 ```
 
